@@ -18,6 +18,9 @@ import memory
 
 colorama.init()
 
+def term_print(input, color):
+    print(colored(f"terminal-helper > {input}", color))
+
 operating_system = platform.platform()
 
 load_dotenv()
@@ -55,6 +58,21 @@ if __name__ == "__main__":
     
     running = True
     
+    work_dir = os.getenv("WORK_DIR")
+
+    if work_dir is None or not work_dir:
+        work_dir = os.path.join(Path.home(), "terminal-helper")
+        if not os.path.exists(work_dir):
+            os.makedirs(work_dir)
+
+    term_print(f"Working directory is {work_dir}", "cyan")
+    
+    try:
+        os.chdir(work_dir)
+    except FileNotFoundError:
+        term_print("Directory doesn't exist. Set WORK_DIR to an existing directory or leave it blank.", "red")
+        sys.exit(0)
+    
     while running:
         
         objective = input(colored("terminal-helper > Enter objective, help for more commands: ", "cyan"))
@@ -62,5 +80,19 @@ if __name__ == "__main__":
         if objective == "quit":
             break
         
+        with Spinner():
+            try:
+                response = openai.ChatCompletion.create(
+                    model="gpt-3.5-turbo",
+                    messages = [
+                        {"role": "system", "content": SYSTEM_MESSAGE},
+                        {"role": "user", "content": f"OBJECTIVE:{objective}"},
+                        {"role": "user", "content": f"CONTEXT:\n{memory.get_recent_conversations()}"},
+                        {"role": "user", "content": f"INSTRUCTIONS:\n{INSTRUCTIONS}"},
+                    ])
+            except Exception as e:
+                term_print("Error accessing the OpenAI API: " + str(e), "red")
+                sys.exit(0)
+        
 
-    print(colored("termina-helper > Thanks for using terminal-helper!", "cyan"))
+        term_print("Thanks for using terminal-helper!", "cyan")
